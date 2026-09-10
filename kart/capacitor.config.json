@@ -1,0 +1,9 @@
+{
+  "appId": "com.deeptime.apexkart",
+  "appName": "APEX 卡丁车",
+  "webDir": "dist",
+  "backgroundColor": "#b6d7df",
+  "android": {
+    "allowMixedContent": false
+  }
+}

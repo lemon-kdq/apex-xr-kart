@@ -1,0 +1,53 @@
+#pragma once
+static const char kControllerPage[]=R"HTML(<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>APEX 遥控器</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#10151d;color:#eef4fa;font:14px system-ui;touch-action:none;user-select:none}main{height:100%;padding:14px max(28px,env(safe-area-inset-right));background:radial-gradient(ellipse at center,#29333f,#10151d 75%)}header{height:42px;display:flex;align-items:center;gap:8px}.brand{font-weight:900;font-style:italic;letter-spacing:3px;color:#bbf66b;font-size:23px}.status{color:#94b7a5;font-size:12px;flex:1}button{border:0;color:#dbe6ef;font:600 12px system-ui;touch-action:none}header button{padding:10px 12px;border-radius:20px;background:#313c48}.controls{height:calc(100% - 42px);display:flex;align-items:center;justify-content:space-between;gap:20px}.stick-wrap{display:grid;justify-items:center;gap:10px;width:34%}#wheel{width:min(54vh,230px);height:min(54vh,230px);border-radius:50%;background:radial-gradient(circle,#17202b 50%,#35414d 52%,#141b24 57%,#303c48 59%,#17202a 63%);box-shadow:0 12px 28px #0008,inset 0 2px 3px #8a9aa433;display:grid;place-items:center;position:relative}#wheel:before{content:'←                         →';white-space:pre;color:#7c91a3;position:absolute;font-size:17px}#knob{width:43%;height:43%;border-radius:50%;background:radial-gradient(circle at 35% 25%,#637482,#344452 65%,#22303c);box-shadow:0 8px 14px #0009,inset 0 2px 3px #b6c9d455;border:2px solid #657985;pointer-events:none;display:grid;place-items:center;color:#c9deeb;font-size:24px}.label{font-size:11px;color:#879bad;letter-spacing:2px}.dash{text-align:center;align-self:center;min-width:105px}.dash strong{font-size:48px;font-weight:300;font-variant-numeric:tabular-nums}.dash small{display:block;color:#8195a7;font-size:10px;letter-spacing:2px}.laps{margin-top:16px;color:#b4c3cd}.pedals{width:34%;height:100%;position:relative;max-width:290px}.pedals button{position:absolute;border-radius:50%;width:min(29vh,124px);height:min(29vh,124px);box-shadow:0 8px 0 #0007,0 14px 24px #0006,inset 0 3px 4px #ffffff55;font-size:29px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.pedals small{font-size:12px}#gas{background:linear-gradient(#c5ff7b,#83bc3e);color:#1d3510;right:0;top:12%}#brake{background:linear-gradient(#ff9b7b,#d25945);color:#411c17;left:0;bottom:9%}.pedals button.active{transform:translateY(6px);box-shadow:0 2px 0 #0007,inset 0 3px 14px #0004;filter:brightness(.85)}@media(orientation:portrait){.controls{flex-wrap:wrap;align-content:center}.stick-wrap,.pedals{width:45%}.pedals{height:240px}.dash{position:absolute;top:65px;left:42%}#wheel{width:170px;height:170px}.pedals button{width:90px;height:90px}header{gap:6px}.status{font-size:10px}.brand{font-size:17px}}
+</style><main><header><span class="brand">APEX</span><span class="status" id="status">正在连接…</span><button id="music">音乐 开</button><button id="fx">音效 开</button><button id="reset">↻ 重开</button><button id="exit">退出游戏</button></header><div class="controls"><div class="stick-wrap"><div id="wheel" aria-label="转向摇杆"><div id="knob">●</div></div><span class="label">转向 · 松手回中</span></div><div class="dash"><strong id="speed">0</strong><small>KM / H</small><div class="laps"><span id="lap">0</span> 圈</div></div><div class="pedals"><button id="gas" aria-label="油门">A<small>油门</small></button><button id="brake" aria-label="刹车或倒车">B<small>刹车 / 倒车</small></button></div></div></main>
+<script>
+const $=id=>document.getElementById(id),state={steer:0,gas:0,brake:0};let seq=0,busy=false,command=0,lastOK=performance.now();
+const token='__TOKEN__',client=Math.random().toString(36).slice(2)+Date.now().toString(36);let exited=false;
+const held=new Map();let pointer=null;
+function release(){held.clear();pointer=null;state.steer=state.gas=state.brake=0;$('knob').style.transform='';document.querySelectorAll('.active').forEach(x=>x.classList.remove('active'))}
+for(const [id,key] of [['gas','gas'],['brake','brake']]){const b=$(id);
+ b.onpointerdown=e=>{e.preventDefault();if(held.has(key))return;held.set(key,e.pointerId);b.setPointerCapture(e.pointerId);state[key]=1;b.classList.add('active')};
+ b.onpointerup=b.onpointercancel=b.onlostpointercapture=e=>{if(held.get(key)!==e.pointerId)return;held.delete(key);state[key]=0;b.classList.remove('active')};
+}
+const w=$('wheel');function steer(e){const r=w.getBoundingClientRect();let x=(e.clientX-r.left-r.width/2)/(r.width*.30);state.steer=Math.abs(x)<.08?0:Math.sign(x)*Math.min(1,(Math.abs(x)-.08)/.92);$('knob').style.transform=`translateX(${state.steer*r.width*.3}px)`}
+w.onpointerdown=e=>{e.preventDefault();if(pointer!==null)return;pointer=e.pointerId;w.setPointerCapture(pointer);steer(e)};w.onpointermove=e=>{if(e.pointerId===pointer){e.preventDefault();steer(e)}};
+w.onpointerup=w.onpointercancel=w.onlostpointercapture=e=>{if(e.pointerId!==pointer)return;pointer=null;state.steer=0;$('knob').style.transform=''};
+$('reset').onclick=()=>command=1;$('exit').onclick=()=>{release();command=2};
+window.addEventListener('blur',release);document.addEventListener('visibilitychange',()=>{if(document.hidden)release()});
+async function tick(){if(busy||exited||document.hidden)return;busy=true;const c=command;try{const r=await fetch('/input',{method:'POST',headers:{'Content-Type':'text/plain'},body:`${token} ${client} ${++seq} ${state.steer} ${state.gas} ${state.brake} ${c}`,signal:AbortSignal.timeout(300)});if(r.status===409)throw Error('已有另一台遥控器连接，请关闭那个页面后重试');if(!r.ok)throw Error('连接中断，请确认游戏已打开并刷新页面');lastOK=performance.now();const d=await r.json();audioUpdate(d.speed,d.lap);if(command===c)command=0;$('speed').textContent=(d.speed<-.05?'R ':'')+Math.round(Math.abs(d.speed)*3.6);$('lap').textContent=d.lap;$('status').textContent=c===2?'已退出眼镜游戏':'● 已连接眼镜 · 可以驾驶';if(c===2){exited=true;audioStop()}}catch(e){if(performance.now()-lastOK>900){release();audioStop();$('status').textContent='连接中断 · 已停车，请松手后重试'}else $('status').textContent='网络波动 · 正在重连'}finally{busy=false}}
+// Original synthesized music and effects; no external audio downloads.
+let audioCtx,engine,engineGain,musicBus,fxBus,beat=0,nextBeat=0,lastTelemetry=0,audioSpeed=0,previousLap=0;
+let musicOn=true,fxOn=true;
+try{musicOn=localStorage.getItem('apexMusic')!=='off';fxOn=localStorage.getItem('apexFx')!=='off'}catch{}
+function labels(){document.getElementById('music').textContent=musicOn?'音乐 开':'音乐 关';document.getElementById('fx').textContent=fxOn?'音效 开':'音效 关'}
+function tone(freq,time,duration,volume,bus,type='triangle'){
+ const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;
+ g.gain.setValueAtTime(0,time);g.gain.linearRampToValueAtTime(volume,time+.008);g.gain.exponentialRampToValueAtTime(.0001,time+duration);
+ o.connect(g);g.connect(bus);o.start(time);o.stop(time+duration+.02);o.onended=()=>{o.disconnect();g.disconnect()};
+}
+function startAudio(){
+ if(!audioCtx){audioCtx=new (window.AudioContext||window.webkitAudioContext)();musicBus=audioCtx.createGain();fxBus=audioCtx.createGain();musicBus.gain.value=musicOn?.38:0;fxBus.gain.value=fxOn?.45:0;musicBus.connect(audioCtx.destination);fxBus.connect(audioCtx.destination);
+ engine=audioCtx.createOscillator();engine.type='sawtooth';const filter=audioCtx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=420;engineGain=audioCtx.createGain();engineGain.gain.value=0;engine.connect(filter);filter.connect(engineGain);engineGain.connect(fxBus);engine.start();nextBeat=audioCtx.currentTime;
+ }if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+}
+function audioStop(){lastTelemetry=0;audioSpeed=0;if(audioCtx){engineGain.gain.setTargetAtTime(0,audioCtx.currentTime,.02);audioCtx.suspend().catch(()=>{})}}
+function audioUpdate(speed,lap){lastTelemetry=performance.now();audioSpeed=Math.abs(speed);if(audioCtx&&lap>previousLap){[523,659,784,1047].forEach((n,i)=>tone(n,audioCtx.currentTime+i*.09,.18,.10,fxBus))}previousLap=lap;}
+document.addEventListener('pointerdown',e=>{startAudio();if(e.target.closest('button'))tone(620,audioCtx.currentTime,.04,.06,fxBus);if(e.target.closest('#brake')&&audioSpeed>1){tone(1800,audioCtx.currentTime,.16,.025,fxBus,'sawtooth')}},true);
+for(const [id,key] of [['music','apexMusic'],['fx','apexFx']])document.getElementById(id).onclick=()=>{startAudio();if(id==='music')musicOn=!musicOn;else fxOn=!fxOn;musicBus.gain.setTargetAtTime(musicOn?.38:0,audioCtx.currentTime,.03);fxBus.gain.setTargetAtTime(fxOn?.45:0,audioCtx.currentTime,.03);try{localStorage.setItem(key,(id==='music'?musicOn:fxOn)?'on':'off')}catch{}labels()};
+setInterval(()=>{
+ if(!audioCtx||audioCtx.state!=='running')return;
+ const now=audioCtx.currentTime,live=performance.now()-lastTelemetry<1000&&!exited&&!document.hidden;
+ engine.frequency.setTargetAtTime(40+audioSpeed*7+(state.gas?20:0),now,.08);engineGain.gain.setTargetAtTime(live?.025+Math.min(audioSpeed/13,1)*.035:0,now,.06);
+ musicBus.gain.setTargetAtTime(musicOn&&live?.38:0,now,.1);
+ if(nextBeat<now)nextBeat=now;
+ const melody=[72,0,76,79,76,0,74,0,69,0,72,76,74,0,72,0,65,0,69,72,69,0,67,0,67,71,74,0,71,0,67,0];
+ while(nextBeat<now+.12){let step=beat%32;const n=melody[step];if(live&&musicOn){if(n)tone(440*Math.pow(2,(n-69)/12),nextBeat,.18,.10,musicBus);if(step%4===0)tone(440*Math.pow(2,([48,45,41,43][Math.floor(step/8)]-69)/12),nextBeat,.33,.12,musicBus);if(step%4===0)tone(70,nextBeat,.09,.16,musicBus,'sine');if(step%2===1)tone(6500,nextBeat,.025,.012,musicBus,'square');}beat++;nextBeat+=.25;}
+},50);
+window.addEventListener('blur',audioStop);document.addEventListener('visibilitychange',()=>{if(document.hidden)audioStop()});window.addEventListener('pagehide',audioStop);labels();
+
+setInterval(tick,50);tick();
+</script></html>
+)HTML";

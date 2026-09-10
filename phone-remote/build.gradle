@@ -1,0 +1,6 @@
+plugins { id 'com.android.application' version '8.7.2' }
+android {
+ namespace 'com.deeptime.kartremote'
+ compileSdk 35
+ defaultConfig { applicationId 'com.deeptime.kartremote'; minSdk 26; targetSdk 32; versionCode 1; versionName '0.1' }
+}
